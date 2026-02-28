@@ -3,6 +3,120 @@ package PAGI::App::Storage::Abstract;
 use v5.14;
 use warnings;
 
+use Storage::Abstract;
+use Future::AsyncAwait;
+use Feature::Compat::Try;
+use Carp qw(croak);
+use Scalar::Util qw(blessed);
+use HTTP::Date qw(time2str);
+use MIME::Types;
+
+use constant ERROR_MESSAGES => {
+	400 => 'Bad Request',
+	403 => 'Forbidden',
+	404 => 'Not Found',
+	405 => 'Method Not Allowed',
+};
+
+sub new
+{
+	my ($class, %args) = @_;
+
+	# either storage or storage_config is required
+	my $storage = $args{storage}
+		// Storage::Abstract->new(%{$args{storage_config}});
+
+	return bless {
+		storage => $storage,
+		mime => MIME::Types->new,
+	}, $class;
+}
+
+sub storage { shift->{storage} }
+sub mime { shift->{mime} }
+
+async sub call
+{
+	my ($self, $scope, $receive, $send) = @_;
+
+	die "Unsupported scope type: $scope->{type}" if $scope->{type} ne 'http';
+
+	try {
+		my $method = uc($scope->{method} // '');
+
+		die {status => 405}
+			unless $method eq 'GET' || $method eq 'HEAD';
+
+		my $path = $scope->{path};
+		my $fh = $self->storage->retrieve($path, \my %info);
+		my ($ext) = $path =~ m{\.([^.]+)$};
+		my $content_type = $ext ? $self->mime->mimeTypeOf($ext) : 'application/octet-stream';
+
+		await $send->(
+			{
+				type => 'http.response.start',
+				status => 200,
+				headers => [
+					['content-type', $content_type],
+					['content-length', $info{size}],
+					['last-modified', time2str($info{mtime})],
+				],
+			}
+		);
+
+		if ($method eq 'HEAD') {
+			await $send->({type => 'http.response.body', body => '', more => 0});
+		}
+		else {
+			await $send->(
+				{
+					type => 'http.response.body',
+					fh => $fh,
+				}
+			);
+		}
+	}
+	catch ($e) {
+		if (blessed $e && $e->isa('Storage::Abstract::X::NotFound')) {
+			$self->_send_error($send, 404);
+		}
+		elsif (blessed $e && $e->isa('Storage::Abstract::X::PathError')) {
+			$self->_send_error($send, 403);
+		}
+		elsif (ref $e eq 'HASH' && $e->{status}) {
+			$self->_send_error($send, $e->{status});
+		}
+		else {
+			# other error - let server handle it as 500
+			die $e;
+		}
+	}
+}
+
+async sub _send_error
+{
+	my ($self, $send, $status) = @_;
+
+	my $message = ERROR_MESSAGES->{$status};
+
+	await $send->(
+		{
+			type => 'http.response.start',
+			status => $status,
+			headers => [['content-type', 'text/plain'], ['content-length', length($message)]],
+		}
+	);
+
+	await $send->({type => 'http.response.body', body => $message, more => 0});
+}
+
+sub to_app
+{
+	my ($self) = @_;
+
+	return sub { $self->call(@_) };
+}
+
 1;
 
 __END__
@@ -15,15 +129,20 @@ PAGI::App::Storage::Abstract - New module
 
 	use PAGI::App::Storage::Abstract;
 
-	# do something
+	my $app1 = PAGI::App::Storage::Abstract->new(
+			storage_config => {
+					driver => 'directory',
+					directory => '/some/dir',
+			},
+	)->to_app;
 
 =head1 DESCRIPTION
 
-This module lets you blah blah blah.
+This module is a PAGI app to serve static files with Storage::Abstract.
 
 =head1 SEE ALSO
 
-L<Some::Module>
+L<Plack::App::Storage::Abstract>
 
 =head1 AUTHOR
 

@@ -1,5 +1,5 @@
 # PAGI::App::Storage::Abstract
-A Perl module for blah blah blah
+A PAGI app to serve static files with Storage::Abstract.
 
 ## Code and documentation
 [PAGI::App::Storage::Abstract on CPAN](https://metacpan.org/release/PAGI-App-Storage-Abstract)
@@ -15,5 +15,4 @@ bigger so we can talk it through.
 
 ### Author
 Bartosz Jarzyna <bbrtj.pro@gmail.com>
-
 
