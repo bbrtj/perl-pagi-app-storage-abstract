@@ -1,6 +1,6 @@
 package PAGI::App::Storage::Abstract;
 
-use v5.14;
+use v5.18;
 use warnings;
 
 use Storage::Abstract;
