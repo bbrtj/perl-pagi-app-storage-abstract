@@ -3,7 +3,7 @@ on 'test' => sub {
 };
 
 requires 'Future::AsyncAwait' => '0';
-requires 'PAGI' => '0.001019';
+requires 'PAGI::Tools' => '0.002002';
 requires 'Storage::Abstract' => '0.008';
 requires 'Feature::Compat::Try' => '0';
 requires 'HTTP::Date' => '0';

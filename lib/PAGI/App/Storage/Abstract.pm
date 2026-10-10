@@ -6,7 +6,6 @@ use warnings;
 use Storage::Abstract;
 use Future::AsyncAwait;
 use Feature::Compat::Try;
-use Carp qw(croak);
 use Scalar::Util qw(blessed);
 use HTTP::Date qw(time2str);
 use MIME::Types;
@@ -123,7 +122,7 @@ __END__
 
 =head1 NAME
 
-PAGI::App::Storage::Abstract - New module
+PAGI::App::Storage::Abstract - Storage::Abstract for PAGI
 
 =head1 SYNOPSIS
 
@@ -138,7 +137,16 @@ PAGI::App::Storage::Abstract - New module
 
 =head1 DESCRIPTION
 
-This module is a PAGI app to serve static files with Storage::Abstract.
+This module is a PAGI app to serve static files with L<Storage::Abstract>. See
+its documentation to understand how to properly configure the app in the
+constructor.
+
+Upon constructing and mounting the application, it starts serving static files
+right away - no extra steps are required.
+
+B<Beta quality>: this module will remain beta as long as PAGI itself is not
+fully stabilized. Moreover, its interface may change if a base class for PAGI
+apps is introduced.
 
 =head1 SEE ALSO
 
